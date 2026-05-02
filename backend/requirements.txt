@@ -1,0 +1,47 @@
+# Web framework
+fastapi
+uvicorn[standard]
+
+# Database
+sqlalchemy
+alembic
+asyncpg
+psycopg2-binary
+
+# Auth
+passlib[bcrypt]
+bcrypt==4.0.1
+python-jose[cryptography]
+python-multipart
+httpx
+
+# Config
+pydantic[email]
+pydantic-settings
+python-dotenv
+
+# AI — LangChain / LiteLLM
+langchain
+langchain-openai
+langchain-community
+langgraph
+openai
+
+# Vector store
+chromadb
+
+# File handling
+pypdf
+pillow
+pandas
+openpyxl
+
+# Google integrations
+google-auth
+google-auth-oauthlib
+gspread
+
+# Testing
+pytest
+pytest-asyncio
+pytest-mock
