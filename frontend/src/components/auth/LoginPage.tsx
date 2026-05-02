@@ -6,8 +6,15 @@ interface Props {
   onRegister: (email: string, password: string, displayName: string) => Promise<void>;
 }
 
-// Must match backend settings.ALLOWED_DOMAIN
-const ALLOWED_DOMAIN = import.meta.env.VITE_ALLOWED_DOMAIN ?? "amzur.com";
+// Must match backend settings.ALLOWED_DOMAINS
+const ALLOWED_DOMAINS = (import.meta.env.VITE_ALLOWED_DOMAINS ?? "amzur.com,evokesystems.com")
+  .split(",")
+  .map((d: string) => d.trim());
+
+const isAllowedEmail = (email: string) =>
+  ALLOWED_DOMAINS.some((d: string) => email.toLowerCase().endsWith(`@${d}`));
+
+const domainsLabel = ALLOWED_DOMAINS.map((d: string) => `@${d}`).join(" or ");
 
 function extractApiError(err: unknown): string {
   if (err instanceof ApiError) {
@@ -41,8 +48,8 @@ export function LoginPage({ onLogin, onRegister }: Props) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
-    if (!email.toLowerCase().endsWith(`@${ALLOWED_DOMAIN}`)) {
-      setError(`Only @${ALLOWED_DOMAIN} accounts are permitted.`);
+    if (!isAllowedEmail(email)) {
+      setError(`Only ${domainsLabel} accounts are permitted.`);
       return;
     }
     setLoading(true);
@@ -82,7 +89,7 @@ export function LoginPage({ onLogin, onRegister }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
             <p className="text-xs text-indigo-300">
-              Restricted to <span className="font-semibold">@{ALLOWED_DOMAIN}</span> accounts
+              Restricted to <span className="font-semibold">{domainsLabel}</span> accounts
             </p>
           </div>
 
@@ -129,7 +136,7 @@ export function LoginPage({ onLogin, onRegister }: Props) {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                placeholder={`you@${ALLOWED_DOMAIN}`}
+                placeholder={`you@${ALLOWED_DOMAINS[0]}`}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
             </div>
             <div>

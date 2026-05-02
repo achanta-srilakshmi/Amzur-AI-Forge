@@ -32,7 +32,7 @@ An internal multi-user conversational AI platform built with **FastAPI**, **Reac
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-org/amzur-ai-forge.git
+git clone https://github.com/achanta-srilakshmi/Amzur-AI-Forge.git
 cd amzur-ai-forge
 ```
 
@@ -93,7 +93,7 @@ Copy `backend/.env.example` to `backend/.env` and set:
 | `DATABASE_URL` | Yes | PostgreSQL connection string |
 | `LITELLM_API_KEY` | Yes | API key for the Amzur LiteLLM proxy |
 | `LITELLM_PROXY_URL` | Yes | `https://litellm.amzur.com` |
-| `ALLOWED_DOMAIN` | No | Email domain restriction (default: `amzur.com`) |
+| `ALLOWED_DOMAINS` | No | JSON array of allowed email domains (default: `["amzur.com","evokesystems.com"]`) |
 | `FRONTEND_URL` | No | Frontend origin for OAuth redirects (default: `http://localhost:5173`) |
 | `GOOGLE_CLIENT_ID` | No | Google OAuth client ID (leave blank to disable) |
 | `GOOGLE_CLIENT_SECRET` | No | Google OAuth client secret |

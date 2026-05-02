@@ -13,10 +13,11 @@ class RegisterRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def enforce_domain(cls, v: str) -> str:
-        domain = settings.ALLOWED_DOMAIN
-        if not v.lower().endswith(f"@{domain}"):
-            raise ValueError(f"Only @{domain} email addresses are allowed")
-        return v.lower()
+        email = v.lower()
+        if not any(email.endswith(f"@{d}") for d in settings.ALLOWED_DOMAINS):
+            domains = " or ".join(f"@{d}" for d in settings.ALLOWED_DOMAINS)
+            raise ValueError(f"Only {domains} email addresses are allowed")
+        return email
 
     @field_validator("password")
     @classmethod
@@ -33,10 +34,11 @@ class LoginRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def enforce_domain(cls, v: str) -> str:
-        domain = settings.ALLOWED_DOMAIN
-        if not v.lower().endswith(f"@{domain}"):
-            raise ValueError(f"Only @{domain} email addresses are allowed")
-        return v.lower()
+        email = v.lower()
+        if not any(email.endswith(f"@{d}") for d in settings.ALLOWED_DOMAINS):
+            domains = " or ".join(f"@{d}" for d in settings.ALLOWED_DOMAINS)
+            raise ValueError(f"Only {domains} email addresses are allowed")
+        return email
 
 
 class UserResponse(BaseModel):
