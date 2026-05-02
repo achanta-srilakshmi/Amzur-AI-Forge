@@ -66,8 +66,6 @@ async def google_login() -> RedirectResponse:
 @router.get("/google/callback")
 async def google_callback(
     code: str,
-    response: Response,
     db: AsyncSession = Depends(get_db),
 ) -> RedirectResponse:
-    redirect_url = await handle_google_callback(code, db, response)
-    return RedirectResponse(url=redirect_url)
+    return await handle_google_callback(code, db)

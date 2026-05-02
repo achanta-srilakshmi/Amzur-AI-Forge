@@ -142,14 +142,12 @@ async def get_current_user(
 async def handle_google_callback(
     code: str,
     db: AsyncSession,
-    response: Response,
-) -> str:
+) -> "RedirectResponse":
     """
     Exchange the Google authorisation code for tokens, resolve the user account,
-    set the JWT cookie on *response*, and return the frontend redirect URL.
-
-    Returns a redirect URL — either the app root or an error URL.
+    and return a RedirectResponse with the JWT cookie already set.
     """
+    from fastapi.responses import RedirectResponse as _RedirectResponse
     try:
         async with httpx.AsyncClient() as client:
             token_resp = await client.post(
@@ -187,7 +185,7 @@ async def handle_google_callback(
         from urllib.parse import quote_plus
         domains = " or ".join(f"@{d}" for d in settings.ALLOWED_DOMAINS)
         msg = quote_plus(f"Only {domains} accounts are permitted")
-        return f"{settings.FRONTEND_URL}?error={msg}"
+        return _RedirectResponse(url=f"{settings.FRONTEND_URL}?error={msg}")
 
     # Find or create user — link by email to avoid duplicates (AD-03)
     result = await db.execute(select(User).where(User.email == email))
@@ -211,6 +209,9 @@ async def handle_google_callback(
         await db.commit()
         await db.refresh(user)
 
-    _set_auth_cookie(response, _create_jwt(str(user.id)))
-    return settings.FRONTEND_URL
+    # Cookie must be set directly on the RedirectResponse — FastAPI does NOT
+    # merge cookies from an injected Response dependency into a returned RedirectResponse.
+    redirect = _RedirectResponse(url=settings.FRONTEND_URL)
+    _set_auth_cookie(redirect, _create_jwt(str(user.id)))
+    return redirect
 
