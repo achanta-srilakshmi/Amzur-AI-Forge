@@ -183,9 +183,10 @@ async def handle_google_callback(
     avatar_url: str | None = profile.get("picture")
 
     # Domain restriction — same policy as email/password auth
-    if not email.endswith(f"@{settings.ALLOWED_DOMAIN}"):
+    if not any(email.endswith(f"@{d}") for d in settings.ALLOWED_DOMAINS):
         from urllib.parse import quote_plus
-        msg = quote_plus(f"Only @{settings.ALLOWED_DOMAIN} accounts are permitted")
+        domains = " or ".join(f"@{d}" for d in settings.ALLOWED_DOMAINS)
+        msg = quote_plus(f"Only {domains} accounts are permitted")
         return f"{settings.FRONTEND_URL}?error={msg}"
 
     # Find or create user — link by email to avoid duplicates (AD-03)

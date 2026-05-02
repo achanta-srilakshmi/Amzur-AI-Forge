@@ -50,7 +50,8 @@ class Settings(BaseSettings):
     IMAGE_GEN_MODEL: str = "gemini/imagen-4.0-fast-generate-001"
 
     # Domain restriction (applies to both email/password and Google OAuth)
-    ALLOWED_DOMAIN: str = "amzur.com"
+    # Accepts a JSON array or comma-separated string: ALLOWED_DOMAINS=["amzur.com","evokesystems.com"]
+    ALLOWED_DOMAINS: List[str] = ["amzur.com", "evokesystems.com"]
 
     # Frontend origin — used for OAuth redirects
     FRONTEND_URL: str = "http://localhost:5173"
