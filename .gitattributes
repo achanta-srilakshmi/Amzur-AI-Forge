@@ -1,0 +1,15 @@
+# Normalise all text files to LF in the repository
+* text=auto eol=lf
+
+# Explicitly declare binary files so git never mangles them
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.svg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
