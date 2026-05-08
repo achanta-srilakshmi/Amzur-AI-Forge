@@ -21,9 +21,10 @@ pydantic-settings
 python-dotenv
 
 # AI — LangChain / LiteLLM
-langchain
-langchain-openai
-langchain-community
+langchain>=0.3
+langchain-openai>=0.2
+langchain-community>=0.3
+langchain-core>=0.3
 langgraph
 openai
 
@@ -35,6 +36,8 @@ pypdf
 pillow
 pandas
 openpyxl
+numpy
+opencv-python
 
 # Google integrations
 google-auth
