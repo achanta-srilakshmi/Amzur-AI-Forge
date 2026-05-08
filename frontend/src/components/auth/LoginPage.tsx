@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, type FormEvent } from "react";
+﻿import { useState, type FormEvent } from "react";
 import { ApiError } from "../../lib/api";
 
 interface Props {
@@ -18,6 +18,9 @@ const domainsLabel = ALLOWED_DOMAINS.map((d: string) => `@${d}`).join(" or ");
 
 function extractApiError(err: unknown): string {
   if (err instanceof ApiError) {
+    if (err.status === 502) {
+      return "Cannot reach backend service. Ensure backend is running on port 8000 and try again.";
+    }
     const detail = err.detail as { message?: string; detail?: Array<{ msg: string }> } | null;
     if (Array.isArray((detail as { detail?: unknown })?.detail)) {
       const items = (detail as { detail: Array<{ msg: string }> }).detail;
@@ -28,22 +31,23 @@ function extractApiError(err: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+function getInitialOauthError(): string {
+  const params = new URLSearchParams(window.location.search);
+  const oauthError = params.get("error");
+  if (!oauthError) {
+    return "";
+  }
+  window.history.replaceState({}, "", window.location.pathname);
+  return decodeURIComponent(oauthError);
+}
+
 export function LoginPage({ onLogin, onRegister }: Props) {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(getInitialOauthError);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const oauthError = params.get("error");
-    if (oauthError) {
-      setError(decodeURIComponent(oauthError));
-      window.history.replaceState({}, "", window.location.pathname);
-    }
-  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -71,7 +75,7 @@ export function LoginPage({ onLogin, onRegister }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 mb-4">
@@ -79,16 +83,16 @@ export function LoginPage({ onLogin, onRegister }: Props) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3-3-3z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">Amzur AI Chat</h1>
-          <p className="text-gray-400 mt-1 text-sm">For Evoke employees only</p>
+          <h1 className="text-2xl font-bold text-gray-900">Amzur AI Chat</h1>
+          <p className="text-gray-500 mt-1 text-sm">For Evoke employees only</p>
         </div>
 
-        <div className="bg-gray-900 rounded-2xl p-8 shadow-2xl border border-gray-800">
-          <div className="flex items-center gap-2 bg-indigo-950 border border-indigo-800 rounded-lg px-3 py-2 mb-5">
+        <div className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200">
+          <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2 mb-5">
             <svg className="w-4 h-4 text-indigo-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
             </svg>
-            <p className="text-xs text-indigo-300">
+            <p className="text-xs text-indigo-600">
               Restricted to <span className="font-semibold">{domainsLabel}</span> accounts
             </p>
           </div>
@@ -108,18 +112,18 @@ export function LoginPage({ onLogin, onRegister }: Props) {
           </button>
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex-1 h-px bg-gray-700" />
-            <span className="text-xs text-gray-500">or</span>
-            <div className="flex-1 h-px bg-gray-700" />
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-xs text-gray-400">or</span>
+            <div className="flex-1 h-px bg-gray-200" />
           </div>
 
-          <div className="flex rounded-lg bg-gray-800 p-1 mb-5">
+          <div className="flex rounded-lg bg-gray-100 p-1 mb-5">
             <button type="button" onClick={() => { setMode("login"); setError(""); }}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mode === "login" ? "bg-indigo-600 text-white shadow" : "text-gray-400 hover:text-white"}`}>
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mode === "login" ? "bg-indigo-600 text-white shadow" : "text-gray-500 hover:text-gray-900"}`}>
               Sign In
             </button>
             <button type="button" onClick={() => { setMode("register"); setError(""); }}
-              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mode === "register" ? "bg-indigo-600 text-white shadow" : "text-gray-400 hover:text-white"}`}>
+              className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${mode === "register" ? "bg-indigo-600 text-white shadow" : "text-gray-500 hover:text-gray-900"}`}>
               Sign Up
             </button>
           </div>
@@ -127,31 +131,31 @@ export function LoginPage({ onLogin, onRegister }: Props) {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === "register" && (
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">Display name</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Display name</label>
                 <input type="text" required value={displayName} onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="Your name"
-                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+                  className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder={`you@${ALLOWED_DOMAINS[0]}`}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
               <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder={mode === "register" ? "Min. 8 characters" : "••••••••"}
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+                className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
             </div>
 
             {error && (
-              <p className="text-red-400 text-sm bg-red-950 border border-red-800 rounded-lg px-3 py-2">{error}</p>
+              <p className="text-red-600 text-sm bg-red-50 border border-red-300 rounded-lg px-3 py-2">{error}</p>
             )}
 
             <button type="submit" disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-800 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
+              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:bg-indigo-300 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2">
               {loading && (
                 <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

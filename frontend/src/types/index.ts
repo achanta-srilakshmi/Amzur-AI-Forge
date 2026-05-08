@@ -37,20 +37,50 @@ export interface Message {
 
 // ── Attachments ───────────────────────────────────────────────────────────────
 
-export type AttachmentType = "image" | "video" | "pdf" | "spreadsheet" | "text";
+export type AttachmentType =
+  | "image"
+  | "video"
+  | "table"
+  | "pdf"
+  | "formula"
+  | "code"
+  | "text"
+  | "other";
 
 export interface Attachment {
   id: string;
-  message_id: string;
-  filename: string;
+  thread_id: string;
+  user_id: string;
+  message_id: string | null;
+  original_filename: string;
   mime_type: string;
-  type: AttachmentType;
-  url: string;
+  size_bytes: number;
+  kind: AttachmentType;
+  storage_path: string;
+  created_at: string;
 }
 
 // ── API error detail (mirrors FastAPI structured errors) ─────────────────────
 
 export interface ApiErrorDetail {
   error: string;
+  message: string;
+}
+
+// ── Documents (RAG) ───────────────────────────────────────────────────────────
+
+export interface Document {
+  id: string;
+  user_id: string;
+  thread_id: string;
+  filename: string;
+  file_path: string;
+  chunk_count: number;
+  created_at: string;
+}
+
+export interface DocumentUploadResponse {
+  document: Document;
+  already_processed: boolean;
   message: string;
 }
