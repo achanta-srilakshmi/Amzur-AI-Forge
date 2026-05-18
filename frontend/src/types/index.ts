@@ -27,12 +27,20 @@ export interface Thread {
 
 export type MessageRole = "user" | "assistant" | "system";
 
+export interface SqlResult {
+  columns: string[];
+  rows: Array<Record<string, string | number | boolean | null>>;
+  row_count: number;
+}
+
 export interface Message {
   id: string;
   thread_id: string;
   role: MessageRole;
   content: string;
   created_at: string;
+  generated_sql?: string | null;
+  sql_result?: SqlResult | null;
 }
 
 // ── Attachments ───────────────────────────────────────────────────────────────
@@ -83,4 +91,16 @@ export interface DocumentUploadResponse {
   document: Document;
   already_processed: boolean;
   message: string;
+}
+
+export interface NLQueryResponse {
+  question: string;
+  sql: string;
+  answer: string;
+}
+
+export interface AskDataResponse {
+  question: string;
+  pandas_operation: string;
+  answer: string;
 }

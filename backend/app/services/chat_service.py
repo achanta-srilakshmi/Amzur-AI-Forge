@@ -37,6 +37,14 @@ from app.services.intent_service import (
     detect_image_modification_intent,
     extract_modification_params,
 )
+from app.services.text_to_sql_service import (
+    SqlSafetyError,
+    build_text_to_sql_stream_tail,
+    detect_database_query_intent,
+    run_text_to_sql,
+)
+from app.repositories.external_source_link_repository import save_external_source_links
+from app.services.external_source_link_service import extract_shared_source_links
 from app.core.config import settings
 from app.models.generated_image import GeneratedImage
 
@@ -165,6 +173,7 @@ async def stream_chat_response(
     user: User,
     db: AsyncSession,
     attachments: list[Attachment] | None = None,
+    interaction_mode: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """
     1. Auto-title thread from first user message (if still default).
@@ -199,6 +208,21 @@ async def stream_chat_response(
         )
 
     # Persist user message and bump updated_at
+    links_to_persist = extract_shared_source_links(user_message)
+    if links_to_persist:
+        try:
+            await save_external_source_links(
+                db,
+                user_id=user.id,
+                links=links_to_persist,
+            )
+        except Exception as exc:
+            logger.warning(
+                "Failed to persist external source links for user %s: %s",
+                user.email,
+                exc,
+            )
+
     saved_user_message = await _save_message(
         db, thread.id, user.id, MessageRole.user, user_message
     )
@@ -209,7 +233,10 @@ async def stream_chat_response(
     await db.commit()
 
     logger.info(f"[DEBUG] === CHECKING IMAGE GENERATION INTENT ===")
-    if user_message.strip() and await detect_image_generation_intent(user_message, user.email):
+    force_generate = interaction_mode == "generate"
+    force_database = interaction_mode == "database"
+
+    if user_message.strip() and (force_generate or await detect_image_generation_intent(user_message, user.email)):
         logger.info(f"[DEBUG] IMAGE GENERATION INTENT MATCHED - generating image")
         try:
             generated_image = await generate_image_for_prompt(
@@ -433,6 +460,56 @@ async def stream_chat_response(
             thread = await get_thread(thread.id, user, db)
 
     logger.info("[DEBUG] === NO IMAGE MODIFICATION DETECTED - PROCEEDING TO LLM RESPONSE ===")
+
+    if user_message.strip() and (force_database or await detect_database_query_intent(user_message, user.email)):
+        logger.info("[TEXT2SQL] Database intent detected. Executing Text-to-SQL path.")
+        try:
+            sql_result = await run_text_to_sql(user_message, user.email)
+            assistant_response = sql_result.response_text
+
+            await _save_message(
+                db, thread.id, user.id, MessageRole.assistant, assistant_response
+            )
+            thread.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            async def _sql_generate() -> AsyncGenerator[str, None]:
+                yield assistant_response
+                yield build_text_to_sql_stream_tail(sql_result)
+
+            return _sql_generate()
+        except SqlSafetyError as exc:
+            logger.warning("[TEXT2SQL] Rejected unsafe SQL for thread %s: %s", thread.id, exc)
+            assistant_response = (
+                "I could not run that database query safely. "
+                "Please rephrase as a read-only question."
+            )
+            await _save_message(
+                db, thread.id, user.id, MessageRole.assistant, assistant_response
+            )
+            thread.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            async def _sql_rejected() -> AsyncGenerator[str, None]:
+                yield assistant_response
+
+            return _sql_rejected()
+        except Exception as exc:
+            logger.error("[TEXT2SQL] Failed to execute SQL flow for thread %s: %s", thread.id, exc, exc_info=True)
+            assistant_response = (
+                "I could not complete the database query right now. "
+                "Please try again in a moment."
+            )
+            await _save_message(
+                db, thread.id, user.id, MessageRole.assistant, assistant_response
+            )
+            thread.updated_at = datetime.now(timezone.utc)
+            await db.commit()
+
+            async def _sql_error() -> AsyncGenerator[str, None]:
+                yield assistant_response
+
+            return _sql_error()
 
     # RAG: check if this thread has any uploaded documents and retrieve relevant context
     rag_context: str | None = None

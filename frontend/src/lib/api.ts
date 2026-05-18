@@ -103,6 +103,31 @@ export async function getThreadDocuments<T>(threadId: string): Promise<T> {
   return api.get<T>(`/threads/${threadId}/documents`);
 }
 
+export async function runNlToSqlQuery<T>(question: string): Promise<T> {
+  return api.post<T>("/nl-to-sql/query", { question });
+}
+
+export async function runAskDataQuery<T>(params: {
+  question: string;
+  inputMethod: "file" | "google_sheet";
+  file?: File;
+  googleSheetUrl?: string;
+}): Promise<T> {
+  const formData = new FormData();
+  formData.append("question", params.question);
+  formData.append("input_method", params.inputMethod);
+
+  if (params.inputMethod === "file" && params.file) {
+    formData.append("file", params.file);
+  }
+
+  if (params.inputMethod === "google_sheet" && params.googleSheetUrl) {
+    formData.append("google_sheet_url", params.googleSheetUrl);
+  }
+
+  return uploadFile("/ask-data/query", formData) as Promise<T>;
+}
+
 /** Open a streaming SSE connection and yield text chunks. */
 export async function* streamResponse(
   path: string,

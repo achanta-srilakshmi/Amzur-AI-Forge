@@ -1,6 +1,7 @@
 # Web framework
 fastapi
 uvicorn[standard]
+sse-starlette==2.4.1
 
 # Database
 sqlalchemy
@@ -25,7 +26,11 @@ langchain>=0.3
 langchain-openai>=0.2
 langchain-community>=0.3
 langchain-core>=0.3
+langchain-experimental>=0.3
+langchain-mcp-adapters
 langgraph
+arxiv
+mcp
 openai
 
 # Vector store
@@ -42,7 +47,8 @@ opencv-python
 # Google integrations
 google-auth
 google-auth-oauthlib
-gspread
+gspread>=6.0.0
+tabulate
 
 # Testing
 pytest

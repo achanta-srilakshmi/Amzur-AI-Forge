@@ -9,7 +9,6 @@ from app.services.auth_service import get_current_user
 from app.services.thread_service import (
     create_thread,
     delete_thread,
-    get_thread,
     list_threads,
     update_thread,
 )
@@ -23,7 +22,8 @@ async def create(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ThreadResponse:
-    return await create_thread(data, current_user, db)
+    thread = await create_thread(data, current_user, db)
+    return ThreadResponse.model_validate(thread)
 
 
 @router.get("", response_model=list[ThreadResponse])
@@ -31,7 +31,8 @@ async def list_all(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> list[ThreadResponse]:
-    return await list_threads(current_user, db)
+    threads = await list_threads(current_user, db)
+    return [ThreadResponse.model_validate(thread) for thread in threads]
 
 
 @router.patch("/{thread_id}", response_model=ThreadResponse)
@@ -41,7 +42,8 @@ async def update(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ThreadResponse:
-    return await update_thread(thread_id, data, current_user, db)
+    thread = await update_thread(thread_id, data, current_user, db)
+    return ThreadResponse.model_validate(thread)
 
 
 @router.delete("/{thread_id}", status_code=status.HTTP_204_NO_CONTENT)

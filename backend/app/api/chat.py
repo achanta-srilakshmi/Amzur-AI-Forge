@@ -36,6 +36,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+_ALLOWED_CHAT_MODES = {"pdf", "database", "generate", "chat"}
 
 
 @router.get("/{thread_id}/messages", response_model=list[MessageResponse])
@@ -181,6 +182,7 @@ async def chat(
 
     message = ""
     attachment_ids: str | None = None
+    mode: str | None = None
     files: list[UploadFile | StarletteUploadFile] = []
 
     content_type = request.headers.get("content-type", "").lower()
@@ -193,6 +195,8 @@ async def chat(
         attachment_ids = (
             str(raw_attachment_ids) if raw_attachment_ids is not None else None
         )
+        raw_mode = form.get("mode")
+        mode = str(raw_mode).strip().lower() if raw_mode is not None else None
 
         collected = [*form.getlist("files"), *form.getlist("files[]")]
         files = [
@@ -215,6 +219,9 @@ async def chat(
             raw_message = payload_map.get("message")
             message = str(raw_message or "")
             raw_attachment_ids = payload_map.get("attachment_ids")
+            raw_mode = payload_map.get("mode")
+            if raw_mode is not None:
+                mode = str(raw_mode).strip().lower()
             if isinstance(raw_attachment_ids, Sequence) and not isinstance(
                 raw_attachment_ids, str
             ):
@@ -224,8 +231,17 @@ async def chat(
                 attachment_ids = str(raw_attachment_ids)
             logger.info(
                 f"Parsed JSON request: message_length={len(message)}, "
-                f"attachment_ids={attachment_ids}"
+                f"attachment_ids={attachment_ids}, mode={mode}"
             )
+
+    if mode and mode not in _ALLOWED_CHAT_MODES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "error": "invalid_mode",
+                "message": "mode must be one of: chat, pdf, database, generate",
+            },
+        )
 
     parsed_ids: list[uuid.UUID] = []
     if attachment_ids:
@@ -273,6 +289,7 @@ async def chat(
         current_user,
         db,
         attachments=all_attachments,
+        interaction_mode=mode,
     )
 
     return StreamingResponse(generator, media_type="text/event-stream")

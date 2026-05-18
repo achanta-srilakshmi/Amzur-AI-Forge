@@ -7,6 +7,19 @@ import {
 } from "../lib/api";
 import type { Thread, Message, Attachment } from "../types";
 
+const SQL_STREAM_MARKER = "[[AMZUR_SQL_RESULT]]";
+
+type SqlStreamPayload = {
+  generated_sql?: string;
+  sql_result?: {
+    columns: string[];
+    rows: Array<Record<string, string | number | boolean | null>>;
+    row_count: number;
+  };
+};
+
+type ComposerMode = "chat" | "pdf" | "database" | "generate";
+
 type ValidationDetailItem = {
   loc?: Array<string | number>;
   msg?: string;
@@ -98,12 +111,16 @@ export function useChat() {
     async (
       text: string,
       files: File[] = [],
-      selectedPreservedAttachmentIds: string[] = []
+      selectedPreservedAttachmentIds: string[] = [],
+      mode: ComposerMode = "chat"
     ) => {
       let thread = activeThread;
       if (!thread) {
         thread = await createThread((text || "New Chat").slice(0, 60));
       }
+
+      const allowAttachments = mode === "chat";
+      const filesToUse = allowAttachments ? files : [];
 
       const preservedById = new Map(threadAttachments.map((a) => [a.id, a]));
       const validSelectedPreservedIds = selectedPreservedAttachmentIds.filter((id) =>
@@ -118,7 +135,7 @@ export function useChat() {
       const preservedIdsForPreview =
         validSelectedPreservedIds.length > 0
           ? validSelectedPreservedIds
-          : files.length === 0 && defaultRecentPreservedId
+          : filesToUse.length === 0 && defaultRecentPreservedId
             ? [defaultRecentPreservedId]
             : [];
 
@@ -128,7 +145,7 @@ export function useChat() {
 
       // Build content display with selected preserved attachments and new files.
       const allAttachmentNames = [
-        ...files.map((f) => f.name),
+        ...filesToUse.map((f) => f.name),
         ...preservedNamesForPreview,
       ];
       const attachmentSummary = allAttachmentNames.length
@@ -153,7 +170,11 @@ export function useChat() {
       const tempAssistantId = `temp-assistant-${Date.now()}`;
       const waitingText = allAttachmentNames.length
         ? "Analyzing attachments..."
-        : "Thinking...";
+        : mode === "database"
+          ? "Querying database..."
+          : mode === "generate"
+            ? "Generating image..."
+            : "Thinking...";
       setMessages((prev) => [
         ...prev,
         {
@@ -166,21 +187,21 @@ export function useChat() {
       ]);
 
       setProgressLabel(
-        files.length ? "Uploading and analyzing attachments..." : "Sending message..."
+        filesToUse.length ? "Uploading and analyzing attachments..." : "Sending message..."
       );
       setStreaming(true);
 
       try {
         // Step 1: Upload new files if any
         let uploadedIds: string[] = [];
-        if (files.length > 0) {
+        if (filesToUse.length > 0) {
           try {
             setProgressLabel("Uploading files...");
-            console.log(`[Upload] Sending ${files.length} file(s):`, files.map(f => f.name));
+            console.log(`[Upload] Sending ${filesToUse.length} file(s):`, filesToUse.map(f => f.name));
             
             const uploaded = await uploadAttachments<Attachment[]>(
               thread!.id,
-              files
+              filesToUse
             );
             
             console.log(`[Upload] Success! Got ${uploaded.length} attachment(s)`, uploaded.map(a => a.original_filename));
@@ -216,7 +237,7 @@ export function useChat() {
         const preservedIdsToUse =
           validSelectedPreservedIds.length > 0
             ? validSelectedPreservedIds
-            : uploadedIds.length === 0 && defaultRecentPreservedId
+            : uploadedIds.length === 0 && defaultRecentPreservedId && allowAttachments
               ? [defaultRecentPreservedId]
               : [];
 
@@ -232,6 +253,7 @@ export function useChat() {
 
         const formData = new FormData();
         formData.append("message", text);
+        formData.append("mode", mode);
         if (allAttachmentIds.length > 0) {
           formData.append("attachment_ids", allAttachmentIds.join(","));
         }
@@ -239,6 +261,9 @@ export function useChat() {
         const controller = new AbortController();
         const timeoutId = window.setTimeout(() => controller.abort(), 120000);
         let hasFirstChunk = false;
+        let markerSeen = false;
+        let visibleBuffer = "";
+        let metadataBuffer = "";
 
         setProgressLabel("Waiting for model response...");
 
@@ -252,16 +277,56 @@ export function useChat() {
             setProgressLabel("Streaming response...");
           }
 
+          if (markerSeen) {
+            metadataBuffer += chunk;
+            continue;
+          }
+
+          const markerIndex = chunk.indexOf(SQL_STREAM_MARKER);
+          if (markerIndex >= 0) {
+            markerSeen = true;
+            const visibleChunk = chunk.slice(0, markerIndex);
+            const metadataChunk = chunk.slice(markerIndex + SQL_STREAM_MARKER.length);
+            if (visibleChunk) {
+              visibleBuffer += visibleChunk;
+            }
+            metadataBuffer += metadataChunk;
+          } else {
+            visibleBuffer += chunk;
+          }
+
           setMessages((prev) =>
             prev.map((m) =>
               m.id === tempAssistantId
                 ? {
                     ...m,
-                    content: m.content === waitingText ? chunk : m.content + chunk,
+                    content:
+                      m.content === waitingText
+                        ? visibleBuffer
+                        : visibleBuffer,
                   }
                 : m
             )
           );
+        }
+
+        if (markerSeen && metadataBuffer.trim()) {
+          try {
+            const parsed = JSON.parse(metadataBuffer) as SqlStreamPayload;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === tempAssistantId
+                  ? {
+                      ...m,
+                      generated_sql: parsed.generated_sql ?? null,
+                      sql_result: parsed.sql_result ?? null,
+                    }
+                  : m
+              )
+            );
+          } catch {
+            // Ignore malformed metadata and keep text-only response rendering.
+          }
         }
 
         window.clearTimeout(timeoutId);

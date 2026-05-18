@@ -1,10 +1,15 @@
 import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ThreadSidebar } from "./ThreadSidebar";
 import { MessageList } from "./MessageList";
 import { InputBar } from "./InputBar";
 import { useChat } from "../../hooks/useChat";
 import { ApiError, getThreadDocuments, uploadDocument } from "../../lib/api";
 import type { User, Document, DocumentUploadResponse } from "../../types";
+import type { ToolKey } from "../../assets/ToolIcons";
+import { AskDataPage } from "../../pages/AskDataPage";
+import { ResearchPanel } from "./ResearchPanel";
+import { TicTacToePanel } from "./TicTacToePanel";
 
 interface Props {
   user: User;
@@ -12,6 +17,8 @@ interface Props {
 }
 
 export default function ChatPage({ user, onLogout }: Props) {
+  const location = useLocation();
+  const navigate = useNavigate();
   const {
     threads,
     activeThread,
@@ -29,9 +36,76 @@ export default function ChatPage({ user, onLogout }: Props) {
     removeThreadAttachment,
   } = useChat();
 
+  const [activeTool, setActiveTool] = useState<ToolKey>('chat');
   const [pdfUploading, setPdfUploading] = useState(false);
   const [pdfStatus, setPdfStatus] = useState<string | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const isDatabaseView = location.pathname === "/database";
+  const isAskDataView = location.pathname === "/ask-data";
+  const isResearchView = location.pathname === "/research";
+  const isTicTacToeView = location.pathname === "/tictactoe";
+  const composerTool =
+    activeTool === "research" || activeTool === "tictactoe" ? "chat" : activeTool;
+
+  useEffect(() => {
+    if (location.pathname === "/database") {
+      setActiveTool("database");
+      return;
+    }
+    if (location.pathname === "/ask-data") {
+      setActiveTool("excel");
+      return;
+    }
+    if (location.pathname === "/research") {
+      setActiveTool("research");
+      return;
+    }
+    if (location.pathname === "/tictactoe") {
+      setActiveTool("tictactoe");
+      return;
+    }
+    setActiveTool("chat");
+  }, [location.pathname]);
+
+  const handleToolSelect = (tool: ToolKey) => {
+    setActiveTool(tool);
+
+    if (tool === "database") {
+      navigate("/database");
+      return;
+    }
+
+    if (tool === "excel") {
+      navigate("/ask-data");
+      return;
+    }
+
+    if (tool === "research") {
+      navigate("/research");
+      return;
+    }
+
+    if (tool === "tictactoe") {
+      navigate("/tictactoe");
+      return;
+    }
+
+    navigate("/chat");
+  };
+
+  const handleSelectThread = async (threadId: string) => {
+    const thread = threads.find((item) => item.id === threadId);
+    if (!thread) {
+      return;
+    }
+    await selectThread(thread);
+    navigate("/chat");
+  };
+
+  const handleCreateThread = async (title?: string) => {
+    await createThread(title);
+    navigate("/chat");
+  };
 
   // Load all persisted threads as soon as the page mounts (after login)
   useEffect(() => {
@@ -94,22 +168,28 @@ export default function ChatPage({ user, onLogout }: Props) {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(244,114,182,0.14),_transparent_28%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.14),_transparent_30%),linear-gradient(180deg,_#fffdf8_0%,_#f8fafc_50%,_#eef2ff_100%)]">
+    <div className="flex h-screen overflow-hidden bg-slate-50">
       <ThreadSidebar
         threads={threads}
         activeThread={activeThread}
         user={user}
-        onSelect={selectThread}
-        onCreate={() => void createThread()}
+        onSelect={(thread) => {
+          void handleSelectThread(thread.id);
+        }}
+        onCreate={() => {
+          void handleCreateThread();
+        }}
         onDelete={deleteThread}
         onRename={renameThread}
+        activeTool={activeTool}
+        setActiveTool={handleToolSelect}
         onLogout={onLogout}
       />
 
       <main className="flex h-full min-w-0 flex-1 flex-col p-2">
         <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[28px] border border-white/70 bg-white/80 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur">
           <header className="flex shrink-0 items-center gap-3 border-b border-slate-200/80 bg-white/70 px-6 py-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-fuchsia-500 text-sm font-semibold text-white shadow-lg shadow-sky-500/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-sky-500 to-fuchsia-500 text-sm font-semibold text-white shadow-lg shadow-sky-500/20">
               AI
             </div>
             <div className="min-w-0">
@@ -125,13 +205,13 @@ export default function ChatPage({ user, onLogout }: Props) {
             </span>
           </header>
 
-          {pdfStatus && (
+          {!isDatabaseView && pdfStatus && (
             <div className="mx-4 mt-2 shrink-0 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-700">
               {pdfStatus}
             </div>
           )}
 
-          {documents.length > 0 && (
+          {!isDatabaseView && documents.length > 0 && (
             <div className="mx-4 mt-2 shrink-0 rounded-xl border border-rose-100 bg-rose-50/70 px-3 py-2">
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose-600">
                 Attached PDFs ({documents.length})
@@ -151,18 +231,31 @@ export default function ChatPage({ user, onLogout }: Props) {
             </div>
           )}
 
-          <MessageList messages={messages} streaming={streaming} />
-          <InputBar
-            onSend={sendMessage}
-            onGenerateImage={(prompt) => sendMessage(prompt, [], [])}
-            onUploadPdf={handleUploadPdf}
-            pdfUploading={pdfUploading}
-            disabled={streaming}
-            progressLabel={progressLabel}
-            threadAttachments={threadAttachments}
-            onClearAttachments={clearThreadAttachments}
-            onRemoveAttachment={removeThreadAttachment}
-          />
+          {isAskDataView ? (
+            <AskDataPage />
+          ) : isResearchView && activeTool === "research" ? (
+            <ResearchPanel />
+          ) : isTicTacToeView && activeTool === "tictactoe" ? (
+            <TicTacToePanel />
+          ) : (
+            <>
+              <MessageList messages={messages} streaming={streaming} activeTool={activeTool} />
+              <InputBar
+                onSend={(text, files, selectedPreservedAttachmentIds, mode) => {
+                  const normalizedMode = mode === "excel" ? "chat" : mode;
+                  void sendMessage(text, files, selectedPreservedAttachmentIds, normalizedMode);
+                }}
+                onUploadPdf={handleUploadPdf}
+                pdfUploading={pdfUploading}
+                disabled={streaming}
+                progressLabel={progressLabel}
+                threadAttachments={threadAttachments}
+                onClearAttachments={clearThreadAttachments}
+                onRemoveAttachment={removeThreadAttachment}
+                activeTool={composerTool}
+              />
+            </>
+          )}
         </section>
       </main>
     </div>

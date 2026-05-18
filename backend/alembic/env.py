@@ -6,8 +6,10 @@ from alembic import context
 
 # Import all models so autogenerate can detect them
 from app.db.session import Base  # noqa: F401
-from app.models import User, Thread, Message, Attachment  # noqa: F401
+import app.models  # noqa: F401
 from app.core.config import settings
+
+_ = app.models
 
 config = context.config
 

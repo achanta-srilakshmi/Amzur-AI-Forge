@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import auth, chat, threads
+from app.api import ask_data, auth, chat, nl_to_sql, research, tictactoe, threads
 from app.core.config import settings
 from app.core.logging import configure_logging
 
@@ -28,6 +28,10 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(threads.router, prefix="/api/threads", tags=["threads"])
 app.include_router(chat.router, prefix="/api/threads", tags=["chat"])
+app.include_router(nl_to_sql.router, prefix="/api/nl-to-sql", tags=["nl-to-sql"])
+app.include_router(ask_data.router, prefix="/api/ask-data", tags=["ask-data"])
+app.include_router(research.router, prefix="/api/research", tags=["research"])
+app.include_router(tictactoe.router, prefix="/api/tictactoe", tags=["tictactoe"])
 
 upload_dir = Path(settings.UPLOAD_DIR)
 upload_dir.mkdir(parents=True, exist_ok=True)

@@ -8,9 +8,15 @@ import {
 } from "react";
 import type { Attachment } from "../../types";
 
+export type ComposerMode = "chat" | "pdf" | "database" | "excel" | "generate";
+
 interface Props {
-  onSend: (text: string, files: File[], selectedPreservedAttachmentIds: string[]) => void;
-  onGenerateImage?: (prompt: string) => void;
+  onSend: (
+    text: string,
+    files: File[],
+    selectedPreservedAttachmentIds: string[],
+    mode: ComposerMode
+  ) => void;
   onUploadPdf?: (file: File) => void;
   pdfUploading?: boolean;
   disabled: boolean;
@@ -18,6 +24,7 @@ interface Props {
   threadAttachments?: Attachment[];
   onClearAttachments?: () => void;
   onRemoveAttachment?: (attachmentId: string) => void;
+  activeTool: ComposerMode;
 }
 
 const pickerOptions = [
@@ -145,7 +152,6 @@ function detectLocalKind(file: File): Attachment["kind"] {
 
 export function InputBar({
   onSend,
-  onGenerateImage,
   onUploadPdf,
   pdfUploading = false,
   disabled,
@@ -153,17 +159,19 @@ export function InputBar({
   threadAttachments = [],
   onClearAttachments,
   onRemoveAttachment,
+  activeTool,
 }: Props) {
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [showPreserved, setShowPreserved] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
-  const [generateImageEnabled, setGenerateImageEnabled] = useState(false);
   const [selectedPreservedIds, setSelectedPreservedIds] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  const mode = activeTool;
 
   useEffect(() => {
     if (!showPicker) {
@@ -194,19 +202,21 @@ export function InputBar({
     });
   }, [threadAttachments]);
 
+  const modeUsesAttachments = mode === "chat";
+  const canSubmit = mode === "chat" ? Boolean(text.trim()) || files.length > 0 : Boolean(text.trim());
+
   const submit = () => {
     const trimmed = text.trim();
-    if ((!trimmed && files.length === 0) || disabled) return;
-    
-    if (generateImageEnabled && trimmed) {
-      // When generate mode is enabled, generate image
-      if (onGenerateImage) {
-        onGenerateImage(trimmed);
-      }
-    } else {
-      // Otherwise send regular message
-      onSend(trimmed, files, selectedPreservedIds);
-    }
+    if (!canSubmit || disabled) return;
+
+    const modeForSend: ComposerMode = mode === "excel" ? "chat" : mode;
+
+    onSend(
+      trimmed,
+      modeUsesAttachments ? files : [],
+      modeUsesAttachments ? selectedPreservedIds : [],
+      modeForSend,
+    );
     
     setText("");
     setFiles([]);
@@ -240,6 +250,11 @@ export function InputBar({
   };
 
   const openFilePicker = () => {
+    if (mode === "pdf") {
+      pdfInputRef.current?.click();
+      return;
+    }
+    if (!modeUsesAttachments) return;
     setShowPicker((prev) => !prev);
   };
 
@@ -270,7 +285,7 @@ export function InputBar({
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
-    if (disabled) return;
+    if (disabled || !modeUsesAttachments) return;
 
     const items = Array.from(event.clipboardData?.items ?? []);
     const pastedFiles = items
@@ -302,7 +317,7 @@ export function InputBar({
   return (
     <div className="border-t border-slate-200/80 bg-white/75 px-4 py-4 backdrop-blur">
       <div className="mx-auto max-w-3xl">
-        {threadAttachments.length > 0 && !showPreserved && (
+        {modeUsesAttachments && threadAttachments.length > 0 && !showPreserved && (
           <div className="mb-3 flex items-center gap-2">
             <button
               type="button"
@@ -332,7 +347,7 @@ export function InputBar({
           </div>
         )}
 
-        {threadAttachments.length > 0 && showPreserved && (
+        {modeUsesAttachments && threadAttachments.length > 0 && showPreserved && (
           <div className="mb-3 rounded-3xl border border-sky-200 bg-[linear-gradient(135deg,rgba(240,249,255,0.95),rgba(248,250,252,0.95))] p-4 shadow-sm">
             <div className="mb-3 flex items-center gap-2">
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">
@@ -394,7 +409,7 @@ export function InputBar({
           </div>
         )}
 
-        {files.length > 0 && (
+        {modeUsesAttachments && files.length > 0 && (
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="text-xs font-medium text-slate-600">Adding ({files.length}):</span>
             {files.map((file, idx) => (
@@ -457,7 +472,7 @@ export function InputBar({
             <button
               type="button"
               onClick={openFilePicker}
-              disabled={disabled}
+              disabled={disabled || (mode === "pdf" && pdfUploading) || (!modeUsesAttachments && mode !== "pdf")}
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-300 bg-[linear-gradient(135deg,#ffffff,#eff6ff)] text-slate-600 transition-colors hover:border-sky-400 hover:text-sky-600 disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
               aria-label="Attach files"
               aria-expanded={showPicker}
@@ -508,60 +523,26 @@ export function InputBar({
                 onPaste={handlePaste}
                 onKeyDown={handleKeyDown}
                 disabled={disabled}
-                placeholder="Ask anything, then add images, video, PDF, formulas, tables, code, or text..."
+                placeholder={
+                  mode === "database"
+                    ? "Ask a database question (read-only SQL will be generated)..."
+                    : mode === "generate"
+                      ? "Describe the image you want to generate..."
+                      : mode === "pdf"
+                        ? "Upload PDFs, then ask questions about your documents..."
+                      : "Ask anything, then add images, video, PDF, formulas, tables, code, or text..."
+                }
                 className="max-h-40 min-h-11 w-full resize-none border-0 bg-transparent px-0 py-2 text-sm text-slate-800 outline-none placeholder:text-slate-400"
               />
             </div>
 
-            {/* PDF upload button for RAG */}
-            {onUploadPdf && (
-              <button
-                type="button"
-                onClick={() => pdfInputRef.current?.click()}
-                disabled={disabled || pdfUploading}
-                className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl border px-4 text-sm font-medium transition ${
-                  pdfUploading
-                    ? "border-rose-200 bg-rose-100 text-rose-400"
-                    : "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100"
-                } disabled:opacity-50`}
-                title="Upload PDF for document Q&A (RAG)"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                {pdfUploading ? "Uploading…" : "PDF"}
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setGenerateImageEnabled(!generateImageEnabled)}
-              className={`inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl px-4 text-sm font-medium transition ${
-                generateImageEnabled
-                  ? "bg-[linear-gradient(135deg,#fbbf24,#f97316)] text-amber-900 shadow-lg shadow-amber-300/40 hover:-translate-y-px hover:shadow-amber-400/50"
-                  : "bg-slate-200 text-slate-500 shadow-none hover:bg-slate-300"
-              } disabled:translate-y-0 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none`}
-              title={generateImageEnabled ? "Disable image generation mode" : "Enable image generation mode"}
-            >
-              <svg className="h-4 w-4" fill={generateImageEnabled ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-              Generate
-            </button>
-
             <button
               type="button"
               onClick={submit}
-              disabled={disabled || (!text.trim() && files.length === 0)}
+              disabled={disabled || !canSubmit}
               className="inline-flex h-11 shrink-0 items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#93c5fd,#c4b5fd)] px-4 text-sm font-medium text-blue-900 shadow-lg shadow-blue-300/40 transition hover:-translate-y-px hover:shadow-blue-400/50 disabled:translate-y-0 disabled:bg-slate-200 disabled:text-slate-500 disabled:shadow-none"
             >
-              Send
+              {mode === "generate" ? "Generate" : "Send"}
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"

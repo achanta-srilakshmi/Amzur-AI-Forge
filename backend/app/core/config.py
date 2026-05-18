@@ -1,6 +1,6 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
-from pydantic import computed_field
+from pydantic import computed_field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -53,6 +53,36 @@ class Settings(BaseSettings):
     # Accepts a JSON array or comma-separated string: ALLOWED_DOMAINS=["amzur.com","evokesystems.com"]
     ALLOWED_DOMAINS: List[str] = ["amzur.com", "evokesystems.com"]
 
+    @field_validator("ALLOWED_DOMAINS", mode="before")
+    @classmethod
+    def parse_allowed_domains(cls, value: Any) -> Any:
+        """Accept JSON arrays or comma-separated strings for ALLOWED_DOMAINS."""
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                return value
+            return [
+                item.strip()
+                for item in raw.split(",")
+                if item.strip()
+            ]
+        return value
+
+    @field_validator("RESEARCH_MCP_ARGS", mode="before")
+    @classmethod
+    def parse_research_mcp_args(cls, value: Any) -> Any:
+        """Accept JSON arrays or comma-separated strings for RESEARCH_MCP_ARGS."""
+        if isinstance(value, str):
+            raw = value.strip()
+            if not raw:
+                return []
+            if raw.startswith("["):
+                return value
+            return [item.strip() for item in raw.split(",") if item.strip()]
+        return value
+
     # Frontend origin — used for OAuth redirects
     FRONTEND_URL: str = "http://localhost:5173"
 
@@ -63,6 +93,12 @@ class Settings(BaseSettings):
 
     # ChromaDB
     CHROMA_PERSIST_DIR: str = "./chroma_db"
+
+    # Research MCP
+    RESEARCH_MCP_TRANSPORT: str = "sse"
+    RESEARCH_MCP_URL: Optional[str] = "https://mcp.arxiv.org/sse"
+    RESEARCH_MCP_COMMAND: Optional[str] = None
+    RESEARCH_MCP_ARGS: List[str] = []
 
     # Google Sheets
     GOOGLE_SERVICE_ACCOUNT_JSON: Optional[str] = None

@@ -1,6 +1,7 @@
-﻿import { useAuth } from './hooks/useAuth'
-import { LoginPage } from './components/auth/LoginPage'
-import ChatPage from './components/chat/ChatPage'
+﻿import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./hooks/useAuth";
+import { LoginPage } from "./components/auth/LoginPage";
+import ChatPage from "./components/chat/ChatPage";
 
 function App() {
   const { user, loading, login, register, logout } = useAuth()
@@ -17,10 +18,29 @@ function App() {
   }
 
   if (!user) {
-    return <LoginPage onLogin={login} onRegister={register} />
+    return (
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<LoginPage onLogin={login} onRegister={register} />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </BrowserRouter>
+    )
   }
 
-  return <ChatPage user={user} onLogout={logout} />
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Navigate to="/chat" replace />} />
+        <Route path="/chat" element={<ChatPage user={user} onLogout={logout} />} />
+        <Route path="/database" element={<ChatPage user={user} onLogout={logout} />} />
+        <Route path="/ask-data" element={<ChatPage user={user} onLogout={logout} />} />
+        <Route path="/research" element={<ChatPage user={user} onLogout={logout} />} />
+        <Route path="/tictactoe" element={<ChatPage user={user} onLogout={logout} />} />
+        <Route path="*" element={<Navigate to="/chat" replace />} />
+      </Routes>
+    </BrowserRouter>
+  )
 }
 
 export default App

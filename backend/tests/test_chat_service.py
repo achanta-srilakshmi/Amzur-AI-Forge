@@ -34,7 +34,8 @@ async def test_stream_chat_response_saves_and_streams(mock_db, mock_thread, mock
     mock_chain.astream = MagicMock(return_value=_chunk_stream(["Hello", " world"]))
 
     with patch("app.services.chat_service._save_message", new=AsyncMock()) as save_msg, \
-         patch("app.services.chat_service.chat_chain", new=mock_chain):
+         patch("app.services.chat_service.chat_chain", new=mock_chain), \
+         patch("app.services.chat_service.thread_has_documents", new=AsyncMock(return_value=False)):
         # Patch thread_memory.load to return empty history
         with patch("app.services.chat_service.thread_memory.load", new=AsyncMock(return_value=[])):
             gen = await chat_service.stream_chat_response(
@@ -53,7 +54,8 @@ async def test_stream_chat_response_handles_llm_error(mock_db, mock_thread, mock
     mock_chain.astream = MagicMock(side_effect=Exception("fail"))
 
     with patch("app.services.chat_service._save_message", new=AsyncMock()), \
-         patch("app.services.chat_service.chat_chain", new=mock_chain):
+         patch("app.services.chat_service.chat_chain", new=mock_chain), \
+         patch("app.services.chat_service.thread_has_documents", new=AsyncMock(return_value=False)):
         with patch("app.services.chat_service.thread_memory.load", new=AsyncMock(return_value=[])):
             gen = await chat_service.stream_chat_response(
                 "hi", mock_thread, mock_user, mock_db
@@ -88,7 +90,8 @@ async def test_stream_chat_response_returns_generated_image_when_intent_true(
          patch("app.services.chat_service.generate_image_for_prompt", new=AsyncMock(return_value=generated)), \
          patch("app.services.chat_service._message_count", new=AsyncMock(return_value=0)), \
          patch("app.services.chat_service._generate_title", new=AsyncMock(return_value="Sunset art")), \
-         patch("app.services.chat_service.build_attachment_context", new=AsyncMock(return_value="")):
+         patch("app.services.chat_service.build_attachment_context", new=AsyncMock(return_value="")), \
+         patch("app.services.chat_service.thread_has_documents", new=AsyncMock(return_value=False)):
         gen = await chat_service.stream_chat_response(
             "draw a sunset", mock_thread, mock_user, mock_db
         )
@@ -115,7 +118,8 @@ async def test_stream_chat_response_falls_back_to_text_when_image_fails(
          patch("app.services.chat_service._message_count", new=AsyncMock(return_value=0)), \
          patch("app.services.chat_service._generate_title", new=AsyncMock(return_value="Fallback")), \
          patch("app.services.chat_service.build_attachment_context", new=AsyncMock(return_value="")), \
-         patch("app.services.chat_service.thread_memory.load", new=AsyncMock(return_value=[])):
+         patch("app.services.chat_service.thread_memory.load", new=AsyncMock(return_value=[])), \
+         patch("app.services.chat_service.thread_has_documents", new=AsyncMock(return_value=False)):
         gen = await chat_service.stream_chat_response(
             "generate an image", mock_thread, mock_user, mock_db
         )

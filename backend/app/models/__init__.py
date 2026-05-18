@@ -3,6 +3,7 @@ from app.models.thread import Thread
 from app.models.message import Message, MessageRole
 from app.models.attachment import Attachment, AttachmentKind
 from app.models.generated_image import GeneratedImage
+from app.models.external_source_link import ExternalSourceLink
 
 __all__ = [
 	"User",
@@ -12,4 +13,5 @@ __all__ = [
 	"Attachment",
 	"AttachmentKind",
 	"GeneratedImage",
+	"ExternalSourceLink",
 ]
