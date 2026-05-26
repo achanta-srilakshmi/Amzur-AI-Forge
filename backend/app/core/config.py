@@ -100,6 +100,11 @@ class Settings(BaseSettings):
     RESEARCH_MCP_COMMAND: Optional[str] = None
     RESEARCH_MCP_ARGS: List[str] = []
 
+    # n8n automation sidecar
+    N8N_WEBHOOK_URL: Optional[str] = None
+    N8N_API_KEY: Optional[str] = None
+    N8N_STATUS_WEBHOOK_URL: Optional[str] = None
+
     # Google Sheets
     GOOGLE_SERVICE_ACCOUNT_JSON: Optional[str] = None
 

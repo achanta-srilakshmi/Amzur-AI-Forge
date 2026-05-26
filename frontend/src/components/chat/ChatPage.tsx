@@ -10,6 +10,7 @@ import type { ToolKey } from "../../assets/ToolIcons";
 import { AskDataPage } from "../../pages/AskDataPage";
 import { ResearchPanel } from "./ResearchPanel";
 import { TicTacToePanel } from "./TicTacToePanel";
+import PRReviewPanel from "./PRReviewPanel";
 
 interface Props {
   user: User;
@@ -44,8 +45,11 @@ export default function ChatPage({ user, onLogout }: Props) {
   const isAskDataView = location.pathname === "/ask-data";
   const isResearchView = location.pathname === "/research";
   const isTicTacToeView = location.pathname === "/tictactoe";
+  const isPrReviewView = location.pathname === "/prreview";
   const composerTool =
-    activeTool === "research" || activeTool === "tictactoe" ? "chat" : activeTool;
+    activeTool === "research" || activeTool === "tictactoe" || activeTool === "prreview"
+      ? "chat"
+      : activeTool;
 
   useEffect(() => {
     if (location.pathname === "/database") {
@@ -62,6 +66,10 @@ export default function ChatPage({ user, onLogout }: Props) {
     }
     if (location.pathname === "/tictactoe") {
       setActiveTool("tictactoe");
+      return;
+    }
+    if (location.pathname === "/prreview") {
+      setActiveTool("prreview");
       return;
     }
     setActiveTool("chat");
@@ -87,6 +95,11 @@ export default function ChatPage({ user, onLogout }: Props) {
 
     if (tool === "tictactoe") {
       navigate("/tictactoe");
+      return;
+    }
+
+    if (tool === "prreview") {
+      navigate("/prreview");
       return;
     }
 
@@ -237,6 +250,8 @@ export default function ChatPage({ user, onLogout }: Props) {
             <ResearchPanel />
           ) : isTicTacToeView && activeTool === "tictactoe" ? (
             <TicTacToePanel />
+          ) : isPrReviewView && activeTool === "prreview" ? (
+            <PRReviewPanel />
           ) : (
             <>
               <MessageList messages={messages} streaming={streaming} activeTool={activeTool} />

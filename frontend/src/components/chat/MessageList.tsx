@@ -209,6 +209,22 @@ export function MessageList({ messages, streaming, activeTool }: Props) {
         "Play again and beat the agent",
       ],
     },
+    prreview: {
+      title: "PR Review",
+      description: "Trigger the n8n Smart Code Review Router workflow for GitHub pull requests.",
+      features: [
+        "GitHub PR URL validation",
+        "Secure webhook trigger via backend",
+        "Immediate workflow start confirmation",
+        "Supports multiple PR submissions"
+      ],
+      examples: [
+        "Review https://github.com/owner/repo/pull/123",
+        "Trigger review for our feature branch PR",
+        "Send this open PR to Smart Code Review",
+        "Run review workflow for PR #456",
+      ],
+    },
   };
 
   const content = toolContent[activeTool];

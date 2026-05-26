@@ -48,6 +48,12 @@ const TicTacToeIcon = ({ className = '' }: { className?: string }): React.ReactE
   </svg>
 );
 
+const PRReviewIcon = ({ className = '' }: { className?: string }): React.ReactElement => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+  </svg>
+);
+
 export const TOOL_ICONS = {
   chat: ChatIcon,
   pdf: PDFIcon,
@@ -56,9 +62,10 @@ export const TOOL_ICONS = {
   generate: GenerateIcon,
   research: ResearchIcon,
   tictactoe: TicTacToeIcon,
+  prreview: PRReviewIcon,
 } as const;
 
-export const TOOL_KEYS = ['chat', 'pdf', 'database', 'excel', 'generate', 'research', 'tictactoe'] as const;
+export const TOOL_KEYS = ['chat', 'pdf', 'database', 'excel', 'generate', 'research', 'tictactoe', 'prreview'] as const;
 export type ToolKey = typeof TOOL_KEYS[number];
 
 export const TOOL_META: Record<ToolKey, { label: string; color: string; icon: React.FC<{ className?: string }> }> = {
@@ -96,5 +103,10 @@ export const TOOL_META: Record<ToolKey, { label: string; color: string; icon: Re
     label: 'Tic Tac Toe',
     color: 'text-rose-500',
     icon: TicTacToeIcon,
+  },
+  prreview: {
+    label: 'PR Review',
+    color: 'text-violet-600',
+    icon: PRReviewIcon,
   },
 };

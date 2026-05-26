@@ -37,6 +37,7 @@ function App() {
         <Route path="/ask-data" element={<ChatPage user={user} onLogout={logout} />} />
         <Route path="/research" element={<ChatPage user={user} onLogout={logout} />} />
         <Route path="/tictactoe" element={<ChatPage user={user} onLogout={logout} />} />
+        <Route path="/prreview" element={<ChatPage user={user} onLogout={logout} />} />
         <Route path="*" element={<Navigate to="/chat" replace />} />
       </Routes>
     </BrowserRouter>

@@ -173,7 +173,7 @@ export function ThreadSidebar({
           Tools
         </div>
         <div className="flex flex-col gap-1">
-          {(['chat','pdf','database','excel','generate','research','tictactoe'] as ToolKey[]).map((tool) => {
+          {(['chat','pdf','database','excel','generate','research','tictactoe','prreview'] as ToolKey[]).map((tool) => {
             const meta = TOOL_META[tool];
             const Icon = meta.icon;
             return (
